@@ -189,6 +189,16 @@ int main() {
             glm::vec3(3.0f, 0.2f, -2.5f),
             glm::vec3(-2.0f, 0.2f, 1.0f),
     };
+
+    glm::vec3 stonePositions[] = {
+            glm::vec3(-12.0f, 0.2f, 5.5f),
+            glm::vec3(-3.0f, 0.2f, -6.5f),
+            glm::vec3(7.0f, 0.2f, 2.0f),
+            glm::vec3(4.5f, 0.2f, 12.5f),
+            glm::vec3(1.0f, 0.2f, -2.6f),
+            glm::vec3(-7.0f, 0.2f, 8.5f),
+    };
+
     // build and compile shaders
     // -------------------------
     Shader modelShader("resources/shaders/model_lighting.vs", "resources/shaders/model_lighting.fs");
@@ -204,7 +214,8 @@ int main() {
 
     Model iceBlockModel("resources/objects/ice_block/scene.gltf");
     iceBlockModel.SetShaderTextureNamePrefix("material.");
-
+    Model stoneModel("resources/objects/stone/scene.gltf");
+    iceBlockModel.SetShaderTextureNamePrefix("material.");
     float vertices[] = {
             0.0f, 0.5f, 0.0f,
             -0.5f, 0.0f, 0.0f,
@@ -251,13 +262,11 @@ int main() {
     };
     vector<glm::vec3> locationOfIcicles
     {
-        glm::vec3(-10.4f, 0.28f, 8.51f),
-        glm::vec3(-5.4f, 0.28f, 4.81f),
-        glm::vec3(11.6f, 0.28f, -4.19f),
-        glm::vec3(2.6f, 0.28f, -2.49f),
-        glm::vec3(-2.4f, 0.28f, 1.01f),
-
-
+        glm::vec3(-10.38f, 0.28f, 8.508f),
+        glm::vec3(-5.38f, 0.28f, 4.808f),
+        glm::vec3(11.62f, 0.28f, -4.198f),
+        glm::vec3(2.62f, 0.28f, -2.498f),
+        glm::vec3(-2.38f, 0.28f, 1.008f),
     };
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -385,7 +394,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             model = glm::mat4(1.0f);
             model = glm::translate(model, iceBlockPositions[i]);
-            model = glm::rotate(model, (float)glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, (float)glm::radians(225.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
             model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(0.5f));
@@ -433,17 +442,26 @@ int main() {
         blendingShader.setMat4("projection", projection);
 
 
-        for (unsigned int i = 0; i < locationOfIcicles.size(); i++)
+        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
         {
             model = glm::mat4(1.0f);
-            model = glm::translate(model, locationOfIcicles[i]);
+            model = glm::translate(model, it->second);
             model = glm::rotate(model, (float)glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
             model = glm::scale(model, glm::vec3(0.65f));
             blendingShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         };
-
+        // drawing 6 stones
+        for(int i = 0; i < 6; i++) {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, stonePositions[i]);
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(0.0007f));
+            modelShader.setMat4("model", model);
+            stoneModel.Draw(modelShader);
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
