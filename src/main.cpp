@@ -26,6 +26,8 @@ void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 unsigned int loadTexture(const char *path);
+unsigned int loadCubemap(vector<std::string> faces);
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -202,7 +204,9 @@ int main() {
     // build and compile shaders
     // -------------------------
     Shader modelShader("resources/shaders/model_lighting.vs", "resources/shaders/model_lighting.fs");
-
+    Shader octahedronShader("resources/shaders/octahedron.vs", "resources/shaders/octahedron.fs");
+    Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
+    Shader skyBoxShader("resources/shaders/sky_box.vs", "resources/shaders/sky_box.fs");
     // load models
     // -----------
     Model iglooModel("resources/objects/igloo/scene.gltf");
@@ -217,38 +221,81 @@ int main() {
     Model stoneModel("resources/objects/stone/scene.gltf");
     iceBlockModel.SetShaderTextureNamePrefix("material.");
     float vertices[] = {
-            0.0f, 0.5f, 0.0f,
-            -0.5f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.5f,
+        0.0f, 0.5f, 0.0f,
+        -0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.5f,
 
-            0.0f, 0.5f, 0.0f,
-            0.0f, 0.0f, 0.5f,
-            0.5f, 0.0f, 0.0f,
+        0.0f, 0.5f, 0.0f,
+        0.0f, 0.0f, 0.5f,
+        0.5f, 0.0f, 0.0f,
 
-            0.0f, 0.5f, 0.0f,
-            0.5f, 0.0f, 0.0f,
-            0.0f, 0.0f, -0.5f,
+        0.0f, 0.5f, 0.0f,
+        0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, -0.5f,
 
-            0.0f, 0.5f, 0.0f,
-            0.0f, 0.0f, -0.5f,
-            -0.5f, 0.0f, 0.0f,
+        0.0f, 0.5f, 0.0f,
+        0.0f, 0.0f, -0.5f,
+        -0.5f, 0.0f, 0.0f,
 
-            0.0f, -0.5f, 0.0f,
-            -0.5f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.5f,
+        0.0f, -0.5f, 0.0f,
+        -0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.5f,
 
-            0.0f, -0.5f, 0.0f,
-            0.0f, 0.0f, 0.5f,
-            0.5f, 0.0f, 0.0f,
+        0.0f, -0.5f, 0.0f,
+        0.0f, 0.0f, 0.5f,
+        0.5f, 0.0f, 0.0f,
 
-            0.0f, -0.5f, 0.0f,
-            0.5f, 0.0f, 0.0f,
-            0.0f, 0.0f, -0.5f,
+        0.0f, -0.5f, 0.0f,
+        0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, -0.5f,
 
-            0.0f, -0.5f, 0.0f,
-            0.0f, 0.0f, -0.5f,
-            -0.5f, 0.0f, 0.0f
+        0.0f, -0.5f, 0.0f,
+        0.0f, 0.0f, -0.5f,
+        -0.5f, 0.0f, 0.0f
 
+    };
+    float skyboxVertices[] = {
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
     };
     float transparentVertices[] = {
             // positions         // texture Coords
@@ -290,15 +337,37 @@ int main() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
+
+
+    unsigned int skyBoxVAO, skyBoxVBO;
+    glGenVertexArrays(1, &skyBoxVAO);
+    glGenBuffers(1, &skyBoxVBO);
+
+    glBindVertexArray(skyBoxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyBoxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+
     stbi_set_flip_vertically_on_load(false);
     unsigned int transparentTexture = loadTexture("resources/textures/Icicles.png");
 
 
-    Shader octahedronShader("resources/shaders/octahedron.vs", "resources/shaders/octahedron.fs");
-    Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
+    vector<std::string> faces
+    {
+        FileSystem::getPath("resources/textures/skybox/right.jpg"),
+        FileSystem::getPath("resources/textures/skybox/left.jpg"),
+        FileSystem::getPath("resources/textures/skybox/top.jpg"),
+        FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
+        FileSystem::getPath("resources/textures/skybox/front.jpg"),
+        FileSystem::getPath("resources/textures/skybox/back.jpg")
+    };
 
-    // render loop
-    // -----------
+    unsigned int cubeMap = loadCubemap(faces);
+    skyBoxShader.use();
+    skyBoxShader.setInt("skybox", 0);
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
@@ -463,6 +532,15 @@ int main() {
             stoneModel.Draw(modelShader);
         }
 
+        glDepthFunc(GL_LEQUAL);
+        skyBoxShader.use();
+        skyBoxShader.setMat4("view", glm::mat4(glm::mat3(programState->camera.GetViewMatrix())));
+        skyBoxShader.setMat4("projection", projection);
+        glBindVertexArray(skyBoxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDepthFunc(GL_LESS);
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -605,6 +683,34 @@ unsigned int loadTexture(char const * path)
         std::cout << "Texture failed to load at path: " << path << std::endl;
         stbi_image_free(data);
     }
+
+    return textureID;
+}
+unsigned int loadCubemap(vector<std::string> faces) {
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return textureID;
 }
