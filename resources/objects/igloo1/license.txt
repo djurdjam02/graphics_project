@@ -1,0 +1,11 @@
+Model Information:
+* title:	Simple Igloo
+* source:	https://sketchfab.com/3d-models/simple-igloo-18e44fd501d9455b8bbd7a2c548a48b1
+* author:	SangeetBlaze (https://sketchfab.com/SangeetBlaze)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Simple Igloo" (https://sketchfab.com/3d-models/simple-igloo-18e44fd501d9455b8bbd7a2c548a48b1) by SangeetBlaze (https://sketchfab.com/SangeetBlaze) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
