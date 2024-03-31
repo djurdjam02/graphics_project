@@ -156,6 +156,8 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     // translation vectors for each of igloo house
     glm::vec3 iglooPositions[] = {
@@ -357,12 +359,12 @@ int main() {
 
     vector<std::string> faces
     {
-        FileSystem::getPath("resources/textures/skybox/right.jpg"),
-        FileSystem::getPath("resources/textures/skybox/left.jpg"),
-        FileSystem::getPath("resources/textures/skybox/top.jpg"),
-        FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
-        FileSystem::getPath("resources/textures/skybox/front.jpg"),
-        FileSystem::getPath("resources/textures/skybox/back.jpg")
+        "resources/textures/skybox/right.jpg",
+        "resources/textures/skybox/left.jpg",
+        "resources/textures/skybox/top.jpg",
+        "resources/textures/skybox/bottom.jpg",
+        "resources/textures/skybox/front.jpg",
+        "resources/textures/skybox/back.jpg"
     };
 
     unsigned int cubeMap = loadCubemap(faces);
@@ -471,7 +473,7 @@ int main() {
             iceBlockModel.Draw(modelShader);
         };
 
-
+        glEnable(GL_CULL_FACE);
         octahedronShader.use();
         octahedronShader.setMat4("view", view);
         octahedronShader.setMat4("projection", projection);
@@ -500,7 +502,7 @@ int main() {
 
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-
+        glDisable(GL_CULL_FACE);
         blendingShader.use();
         blendingShader.setInt("texture1", 0);
         glBindVertexArray(transparentVAO);
@@ -671,7 +673,7 @@ unsigned int loadTexture(char const * path)
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
