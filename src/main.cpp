@@ -27,7 +27,7 @@ void processInput(GLFWwindow *window);
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(vector<std::string> faces);
-
+void setSpotLight(Shader& shader);
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -41,6 +41,11 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+bool blinn = false;
+bool blinnKeyPressed = false;
+bool spotlight = false;
+bool spotlightKeyPressed = false;
 
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0.1);
@@ -132,11 +137,11 @@ int main() {
 
     programState = new ProgramState;
     programState->LoadFromFile("resources/program_state.txt");
-    /*
+
     if (programState->ImGuiEnabled) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
-     */
+
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); // da mogu da isprobam lepo
     // Init Imgui
     IMGUI_CHECKVERSION();
@@ -221,7 +226,8 @@ int main() {
     Model iceBlockModel("resources/objects/ice_block/scene.gltf");
     iceBlockModel.SetShaderTextureNamePrefix("material.");
     Model stoneModel("resources/objects/stone/scene.gltf");
-    iceBlockModel.SetShaderTextureNamePrefix("material.");
+    stoneModel.SetShaderTextureNamePrefix("material.");
+
     float vertices[] = {
         0.0f, 0.5f, 0.0f,
         -0.5f, 0.0f, 0.0f,
@@ -402,12 +408,19 @@ int main() {
         modelShader.setMat4("view", view);
 
         modelShader.setVec3("viewPos", programState->camera.Position);
-        modelShader.setFloat("material.shininess", 32.0);
+        modelShader.setFloat("material.shininess", 8.0);
 
         modelShader.setVec3("dirLight.direction", -4.0f, -0.5f, -1.5f);
         modelShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
         modelShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
         modelShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+        modelShader.setBool("blinn_phong", blinn);
+        if(blinn)
+            std::cout << " The scene is currently lit by Blinn-Phong's lighting model" << std::endl;
+        else
+            std::cout << " The scene is currently lit by Phong's lighting model" << std::endl;
+
+        setSpotLight(modelShader);
 
         glm::mat4 model;
         unsigned int sign = -1;
@@ -458,9 +471,16 @@ int main() {
             modelShader.setMat4("model", model);
             pinguinModel.Draw(modelShader);
         }
-        //if (programState->ImGuiEnabled)
-            //DrawImGui(programState);
-
+        // drawing 6 stones
+        for(int i = 0; i < 6; i++) {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, stonePositions[i]);
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(0.0007f));
+            modelShader.setMat4("model", model);
+            stoneModel.Draw(modelShader);
+        }
         // drawing 5 ice blocks
         for(int i = 0; i < 5; i++) {
             model = glm::mat4(1.0f);
@@ -477,6 +497,7 @@ int main() {
         octahedronShader.use();
         octahedronShader.setMat4("view", view);
         octahedronShader.setMat4("projection", projection);
+        setSpotLight(octahedronShader);
         for(int i = 0; i < 5; i++) {
 
             model = glm::mat4(1.0f);
@@ -503,6 +524,7 @@ int main() {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
         glDisable(GL_CULL_FACE);
+
         blendingShader.use();
         blendingShader.setInt("texture1", 0);
         glBindVertexArray(transparentVAO);
@@ -511,7 +533,7 @@ int main() {
 
         blendingShader.setMat4("view", view);
         blendingShader.setMat4("projection", projection);
-
+        setSpotLight(blendingShader);
 
         for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
         {
@@ -523,16 +545,6 @@ int main() {
             blendingShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         };
-        // drawing 6 stones
-        for(int i = 0; i < 6; i++) {
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, stonePositions[i]);
-            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::scale(model, glm::vec3(0.0007f));
-            modelShader.setMat4("model", model);
-            stoneModel.Draw(modelShader);
-        }
 
         glDepthFunc(GL_LEQUAL);
         skyBoxShader.use();
@@ -545,6 +557,9 @@ int main() {
         glDepthFunc(GL_LESS);
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
+        if (programState->ImGuiEnabled)
+            DrawImGui(programState);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -574,6 +589,26 @@ void processInput(GLFWwindow *window) {
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !blinnKeyPressed)
+    {
+        blinn = !blinn;
+        blinnKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+    {
+        blinnKeyPressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS && !spotlightKeyPressed)
+    {
+        spotlight = !spotlight;
+        spotlightKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_RELEASE)
+    {
+        spotlightKeyPressed = false;
+    }
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -715,4 +750,18 @@ unsigned int loadCubemap(vector<std::string> faces) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return textureID;
+}
+
+void setSpotLight(Shader& shader) {
+    shader.setBool("sl", spotlight);
+    shader.setVec3("spotLight.position", programState->camera.Position);
+    shader.setVec3("spotLight.direction", programState->camera.Front);
+    shader.setVec3("spotLight.ambient", 0.1f, 0.1f, 0.1f);
+    shader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+    shader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+    shader.setFloat("spotLight.constant", 1.0f);
+    shader.setFloat("spotLight.linear", 0.22f);
+    shader.setFloat("spotLight.quadratic", 0.020f);
+    shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(10.5f)));
+    shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(13.0f)));
 }
