@@ -28,6 +28,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(vector<std::string> faces);
 void setSpotLight(Shader& shader);
+void renderSnowGround();
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -42,6 +43,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+float heightScale = 0.1;
 bool blinn = false;
 bool blinnKeyPressed = false;
 bool spotlight = false;
@@ -53,7 +55,7 @@ struct ProgramState {
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
     ProgramState()
-            : camera(glm::vec3(8.0f, 2.0f, 4.0f)) {}
+            : camera(glm::vec3(8.0f, 1.5f, 5.0f)) {}
 
     void SaveToFile(std::string filename);
 
@@ -166,29 +168,29 @@ int main() {
 
     // translation vectors for each of igloo house
     glm::vec3 iglooPositions[] = {
-            glm::vec3(-3.0f, 0.2f, 5.5f),
-            glm::vec3(-8.0f, 0.2f, 1.8f),
-            glm::vec3(10.0f, 0.2f, -8.1f),
-            glm::vec3(6.0f, 0.2f, -3.2f),
-            glm::vec3(0.0f, 0.2f, -1.0f),
+            glm::vec3(-3.0f, 0.1f, 5.5f),
+            glm::vec3(-8.0f, 0.1f, 1.8f),
+            glm::vec3(10.0f, 0.1f, -8.1f),
+            glm::vec3(6.0f, 0.1f, -3.2f),
+            glm::vec3(0.0f, 0.1f, -1.0f),
     };
     // vectors for which we will translate the position of our penguins
     glm::vec3 pinguinPositions[] = {
-            glm::vec3(-10.0f, 0.2f, 7.5f),
-            glm::vec3(-12.0f, 0.2f, 3.0f),
-            glm::vec3(14.0f, 0.2f, -6.2f),
-            glm::vec3(8.0f, 0.2f, -2.2f),
-            glm::vec3(2.0f, 0.2f, -1.0f),
-            glm::vec3(-16.0f, 0.2f, 10.0f),
-            glm::vec3(-19.0f, 0.2f, 4.8f),
-            glm::vec3(10.0f, 0.2f, -6.2f),
-            glm::vec3(18.0f, 0.2f, -2.2f),
-            glm::vec3(4.5f, 0.2f, -1.0f),
-            glm::vec3(-6.0f, 0.2f, -5.0f),
-            glm::vec3(-2.8f, 0.2f, 7.8f),
-            glm::vec3(5.0f, 0.2f, -5.2f),
-            glm::vec3(11.0f, 0.2f, -3.2f),
-            glm::vec3(-2.7f, 0.2f, -1.5f),
+            glm::vec3(-10.0f, 0.3f, 7.5f),
+            glm::vec3(-12.0f, 0.3f, 3.0f),
+            glm::vec3(14.0f, 0.3f, -6.2f),
+            glm::vec3(8.0f, 0.3f, -2.2f),
+            glm::vec3(2.0f, 0.3f, -1.0f),
+            glm::vec3(-16.0f, 0.3f, 10.0f),
+            glm::vec3(-19.0f, 0.3f, 4.8f),
+            glm::vec3(10.0f, 0.3f, -6.2f),
+            glm::vec3(18.0f, 0.3f, -2.2f),
+            glm::vec3(4.5f, 0.3f, -1.0f),
+            glm::vec3(-6.0f, 0.3f, -5.0f),
+            glm::vec3(-2.8f, 0.3f, 7.8f),
+            glm::vec3(5.0f, 0.3f, -5.2f),
+            glm::vec3(11.0f, 0.3f, -3.2f),
+            glm::vec3(-2.7f, 0.3f, -1.5f),
     };
 
     glm::vec3 iceBlockPositions[] = {
@@ -214,14 +216,13 @@ int main() {
     Shader octahedronShader("resources/shaders/octahedron.vs", "resources/shaders/octahedron.fs");
     Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
     Shader skyBoxShader("resources/shaders/sky_box.vs", "resources/shaders/sky_box.fs");
+    Shader snowShader("resources/shaders/snow.vs", "resources/shaders/snow.fs");
     // load models
     // -----------
-    Model iglooModel("resources/objects/igloo/scene.gltf");
-    iglooModel.SetShaderTextureNamePrefix("material.");
     Model pinguinModel("resources/objects/pingvin/pingvin.obj");
     pinguinModel.SetShaderTextureNamePrefix("material.");
-    Model igloo1Model("resources/objects/igloo1/scene.gltf");
-    igloo1Model.SetShaderTextureNamePrefix("material.");
+    Model iglooModel("resources/objects/igloo/scene.gltf");
+    iglooModel.SetShaderTextureNamePrefix("material.");
 
     Model iceBlockModel("resources/objects/ice_block/scene.gltf");
     iceBlockModel.SetShaderTextureNamePrefix("material.");
@@ -362,6 +363,12 @@ int main() {
     stbi_set_flip_vertically_on_load(false);
     unsigned int transparentTexture = loadTexture("resources/textures/Icicles.png");
 
+    stbi_set_flip_vertically_on_load(true);
+    unsigned int diffuseMap = loadTexture("resources/textures/snow01_diffuse_4k.jpg");
+    unsigned int normalMap  = loadTexture("resources/textures/snow01_normal_4k.jpg");
+    unsigned int heightMap  = loadTexture("resources/textures/snow01_height_4k.jpg");
+
+    stbi_set_flip_vertically_on_load(false);
 
     vector<std::string> faces
     {
@@ -376,6 +383,12 @@ int main() {
     unsigned int cubeMap = loadCubemap(faces);
     skyBoxShader.use();
     skyBoxShader.setInt("skybox", 0);
+
+    snowShader.use();
+    snowShader.setInt("diffuseMap", 0);
+    snowShader.setInt("normalMap", 1);
+    snowShader.setInt("depthMap", 2);
+
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
@@ -428,7 +441,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 3.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 1.0f, 1.0f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 0.9f, 0.9f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
@@ -437,19 +450,20 @@ int main() {
             model = glm::mat4(1.0f);
             model = glm::translate(model, iglooPositions[i] + glm::vec3(10.0f, 0.0f, 3.0f));
             model = glm::rotate(model, (float)glm::radians(-45.0f + sign * (3 * i + 15)), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::scale(model, glm::vec3(1.2f));
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             modelShader.setMat4("model", model);
             iglooModel.Draw(modelShader);
         }
-        // drawing 5 more igloo houses with a different igloo model
+        // drawing 5 more igloo houses
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 0.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.8f, 0.8f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.9f, 0.9f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
-            modelShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.14f);
-            modelShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.07f);
+            modelShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
+            modelShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.20f);
 
             model = glm::mat4(1.0f);
             model = glm::translate(model, iglooPositions[i]);
@@ -458,7 +472,7 @@ int main() {
             model = glm::rotate(model, (float)glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(1.2f));
             modelShader.setMat4("model", model);
-            igloo1Model.Draw(modelShader);
+            iglooModel.Draw(modelShader);
         }
 
         // drawing 15 pinguins
@@ -501,8 +515,8 @@ int main() {
         for(int i = 0; i < 5; i++) {
 
             model = glm::mat4(1.0f);
-            model = glm::translate(model, iglooPositions[i] + glm::vec3(-1.0f, 0.0f, 1.8f));
-            model = glm::rotate(model, (float) glm::radians(40.0), glm::vec3(0.7, 0.8, 0.2));
+            model = glm::translate(model, iglooPositions[i] + glm::vec3(-1.0f, 0.08f, 1.8f));
+            model = glm::rotate(model, (float) glm::radians(50.0), glm::vec3(0.7, 0.8, 0.2));
             model = glm::scale(model, glm::vec3(0.2f));
             octahedronShader.setMat4("model", model);
 
@@ -545,6 +559,55 @@ int main() {
             blendingShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         };
+
+        glEnable(GL_CULL_FACE);
+        snowShader.use();
+        setSpotLight(snowShader);
+        snowShader.setBool("sl", spotlight);
+        snowShader.setMat4("view", view);
+        snowShader.setMat4("projection", projection);
+        for(int i = 0; i < 5; i++) {
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 4.0f));
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 0.2f, 0.2f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
+            snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
+            snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
+            snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].quadratic", 0.20f);
+        }
+
+        for(int i = 0; i < 5; i++) {
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 1.0f));
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.2f, 0.2f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
+            snowShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
+            snowShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
+            snowShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.20f);
+        }
+
+
+        snowShader.setVec3("viewPos", programState->camera.Position);
+
+        snowShader.setVec3("dirLight.direction", -4.0f, -0.5f, -1.5f);
+        snowShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+        snowShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+        snowShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+        snowShader.setBool("blinn_phong", blinn);
+
+        model = glm::mat4(1.0f);
+        snowShader.setMat4("model", model);
+        snowShader.setFloat("height_scale", heightScale);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normalMap);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, heightMap);
+
+        renderSnowGround();
+        glDisable(GL_CULL_FACE);
 
         glDepthFunc(GL_LEQUAL);
         skyBoxShader.use();
@@ -708,8 +771,8 @@ unsigned int loadTexture(char const * path)
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -762,6 +825,99 @@ void setSpotLight(Shader& shader) {
     shader.setFloat("spotLight.constant", 1.0f);
     shader.setFloat("spotLight.linear", 0.22f);
     shader.setFloat("spotLight.quadratic", 0.020f);
-    shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(10.5f)));
-    shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(13.0f)));
+    shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+    shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(18.0f)));
+}
+
+unsigned int snowVAO = 0;
+unsigned int snowVBO;
+void renderSnowGround(){
+
+    if (snowVAO == 0){
+        // positions
+        glm::vec3 pos1(60.0f,  0.08f, 60.0f);
+        glm::vec3 pos2(60.0f, 0.08f, -60.0f);
+        glm::vec3 pos3( -60.0f, 0.08f, -60.0f);
+        glm::vec3 pos4( -60.0f,  0.08f, 60.0f);
+        // texture coordinates
+        glm::vec2 uv1(0.0f, 1.0f);
+        glm::vec2 uv2(0.0f, 0.0f);
+        glm::vec2 uv3(1.0f, 0.0f);
+        glm::vec2 uv4(1.0f, 1.0f);
+        // normal vector
+        glm::vec3 nm(0.0f, 0.0f, 1.0f);
+
+        // calculate tangent/bitangent vectors of both triangles
+        glm::vec3 tangent1, bitangent1;
+        glm::vec3 tangent2, bitangent2;
+        // triangle 1
+        // ----------
+        glm::vec3 edge1 = pos2 - pos1;
+        glm::vec3 edge2 = pos3 - pos1;
+        glm::vec2 deltaUV1 = uv2 - uv1;
+        glm::vec2 deltaUV2 = uv3 - uv1;
+
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+        tangent1 = glm::normalize(tangent1);
+
+        bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        bitangent1 = glm::normalize(bitangent1);
+
+        // triangle 2
+        // ----------
+        edge1 = pos3 - pos1;
+        edge2 = pos4 - pos1;
+        deltaUV1 = uv3 - uv1;
+        deltaUV2 = uv4 - uv1;
+
+        f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        tangent2.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent2.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent2.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+        tangent2 = glm::normalize(tangent2);
+
+
+        bitangent2.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent2.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent2.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        bitangent2 = glm::normalize(bitangent2);
+
+
+        float groundVertices[] = {
+                // positions            // normal         // texcoords  // tangent                          // bitangent
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos2.x, pos2.y, pos2.z, nm.x, nm.y, nm.z, uv2.x, uv2.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
+
+                pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
+                pos4.x, pos4.y, pos4.z, nm.x, nm.y, nm.z, uv4.x, uv4.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z
+        };
+        // configure plane VAO
+        glGenVertexArrays(1, &snowVAO);
+        glGenBuffers(1, &snowVBO);
+        glBindVertexArray(snowVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, snowVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(groundVertices), &groundVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+    }
+    glBindVertexArray(snowVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }

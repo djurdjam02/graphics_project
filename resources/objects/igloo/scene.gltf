@@ -3,187 +3,112 @@
     {
       "bufferView": 2,
       "componentType": 5126,
-      "count": 516,
+      "count": 811,
       "max": [
-        1.0,
-        0.9807853698730469,
-        1.0397080183029175
+        1.3074630498886108,
+        1.0038930177688599,
+        1.3130990266799927
       ],
       "min": [
-        -0.9999999403953552,
-        -0.003266759682446718,
-        -0.9999998807907104
+        -1.003891944885254,
+        -1.003891944885254,
+        9.999999974752427e-07
       ],
       "type": "VEC3"
     },
     {
       "bufferView": 2,
-      "byteOffset": 6192,
+      "byteOffset": 9732,
       "componentType": 5126,
-      "count": 516,
+      "count": 811,
       "max": [
-        0.9980976581573486,
-        1.0,
-        0.9999852776527405
-      ],
-      "min": [
-        -0.9983024597167969,
-        -1.0,
-        -0.9953409433364868
-      ],
-      "type": "VEC3"
-    },
-    {
-      "bufferView": 3,
-      "componentType": 5126,
-      "count": 516,
-      "max": [
-        0.9999495148658752,
-        0.995340883731842,
-        1.0,
+        0.9999903440475464,
+        0.9999822378158569,
         1.0
       ],
       "min": [
-        -0.9999501705169678,
-        -0.9999726414680481,
-        -0.999799370765686,
-        1.0
-      ],
-      "type": "VEC4"
-    },
-    {
-      "bufferView": 1,
-      "componentType": 5126,
-      "count": 516,
-      "max": [
-        0.9997955560684204,
-        0.9358950257301331
-      ],
-      "min": [
-        0.00020440264779608697,
-        0.00020440264779608697
-      ],
-      "type": "VEC2"
-    },
-    {
-      "bufferView": 0,
-      "componentType": 5125,
-      "count": 2556,
-      "type": "SCALAR"
-    },
-    {
-      "bufferView": 2,
-      "byteOffset": 12384,
-      "componentType": 5126,
-      "count": 98,
-      "max": [
-        1.0,
-        0.050164032727479935,
-        1.0
-      ],
-      "min": [
-        -1.0,
-        -0.0005828998982906342,
+        -0.9997966289520264,
+        -0.9999586343765259,
         -1.0
       ],
       "type": "VEC3"
     },
     {
-      "bufferView": 2,
-      "byteOffset": 13560,
-      "componentType": 5126,
-      "count": 98,
-      "max": [
-        0.06245993822813034,
-        1.0,
-        0.12443537265062332
-      ],
-      "min": [
-        -0.12443536520004272,
-        0.9922277331352234,
-        -0.12443536520004272
-      ],
-      "type": "VEC3"
-    },
-    {
       "bufferView": 3,
-      "byteOffset": 8256,
       "componentType": 5126,
-      "count": 98,
+      "count": 811,
       "max": [
-        0.009543959982693195,
-        0.12443532794713974,
+        0.9999751448631287,
         1.0,
+        0.999068558216095,
         1.0
       ],
       "min": [
-        -0.004890901502221823,
-        -0.12443536520004272,
-        0.9921826124191284,
+        -0.9999999403953552,
+        -1.0,
+        -0.9999145269393921,
         1.0
       ],
       "type": "VEC4"
     },
     {
       "bufferView": 1,
-      "byteOffset": 4128,
       "componentType": 5126,
-      "count": 98,
+      "count": 811,
       "max": [
-        0.9999000430107117,
-        0.9986429214477539
+        0.9919760227203369,
+        0.9940069913864136
       ],
       "min": [
-        9.991715342039242e-05,
-        9.991715342039242e-05
+        0.007555999793112278,
+        0.010054999962449074
       ],
       "type": "VEC2"
     },
     {
       "bufferView": 0,
-      "byteOffset": 10224,
       "componentType": 5125,
-      "count": 150,
+      "count": 3576,
       "type": "SCALAR"
     }
   ],
   "asset": {
     "extras": {
-      "author": "Vera4Art (https://sketchfab.com/Elvera.Viljoen)",
+      "author": "SangeetBlaze (https://sketchfab.com/SangeetBlaze)",
       "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-      "source": "https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84",
-      "title": "Igloo"
+      "source": "https://sketchfab.com/3d-models/simple-igloo-18e44fd501d9455b8bbd7a2c548a48b1",
+      "title": "Simple Igloo"
     },
-    "generator": "Sketchfab-14.60.0",
+    "generator": "Sketchfab-12.68.0",
     "version": "2.0"
   },
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 10824,
+      "byteLength": 14304,
       "name": "floatBufferViews",
       "target": 34963
     },
     {
       "buffer": 0,
-      "byteLength": 4912,
-      "byteOffset": 10824,
+      "byteLength": 6488,
+      "byteOffset": 14304,
       "byteStride": 8,
       "name": "floatBufferViews",
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 14736,
-      "byteOffset": 15736,
+      "byteLength": 19464,
+      "byteOffset": 20792,
       "byteStride": 12,
       "name": "floatBufferViews",
       "target": 34962
     },
     {
       "buffer": 0,
-      "byteLength": 9824,
-      "byteOffset": 30472,
+      "byteLength": 12976,
+      "byteOffset": 40256,
       "byteStride": 16,
       "name": "floatBufferViews",
       "target": 34962
@@ -191,28 +116,25 @@
   ],
   "buffers": [
     {
-      "byteLength": 40296,
+      "byteLength": 53232,
       "uri": "scene.bin"
     }
   ],
   "images": [
     {
-      "uri": "textures/Igoo_mix_baseColor.jpeg"
+      "uri": "textures/initialShadingGroup_baseColor.png"
     },
     {
-      "uri": "textures/Igoo_mix_metallicRoughness.png"
+      "uri": "textures/initialShadingGroup_metallicRoughness.png"
     },
     {
-      "uri": "textures/Igoo_mix_normal.png"
-    },
-    {
-      "uri": "textures/Snow_normal.jpeg"
+      "uri": "textures/initialShadingGroup_normal.png"
     }
   ],
   "materials": [
     {
       "doubleSided": true,
-      "name": "Igoo_mix",
+      "name": "initialShadingGroup",
       "normalTexture": {
         "index": 2
       },
@@ -223,26 +145,6 @@
         "baseColorTexture": {
           "index": 0
         },
-        "metallicFactor": 0.0,
-        "metallicRoughnessTexture": {
-          "index": 1
-        }
-      }
-    },
-    {
-      "doubleSided": true,
-      "name": "Snow",
-      "normalTexture": {
-        "index": 3
-      },
-      "occlusionTexture": {
-        "index": 1
-      },
-      "pbrMetallicRoughness": {
-        "baseColorTexture": {
-          "index": 0
-        },
-        "metallicFactor": 0.0,
         "metallicRoughnessTexture": {
           "index": 1
         }
@@ -265,22 +167,6 @@
           "mode": 4
         }
       ]
-    },
-    {
-      "name": "Object_1",
-      "primitives": [
-        {
-          "attributes": {
-            "NORMAL": 6,
-            "POSITION": 5,
-            "TANGENT": 7,
-            "TEXCOORD_0": 8
-          },
-          "indices": 9,
-          "material": 1,
-          "mode": 4
-        }
-      ]
     }
   ],
   "nodes": [
@@ -289,21 +175,21 @@
         1
       ],
       "matrix": [
-        1.0,
+        0.011407991148291052,
+        -1.0061134032593803e-16,
+        1.6432117299124513,
         0.0,
+        1.6432117299124513,
+        -2.617218761631389e-16,
+        -0.011407991148291052,
         0.0,
+        2.6241405669226157e-16,
+        1.6432512998580933,
+        9.879194698667028e-17,
         0.0,
-        0.0,
-        2.220446049250313e-16,
-        -1.0,
-        0.0,
-        0.0,
-        1.0,
-        2.220446049250313e-16,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
+        0.150728240609169,
+        3.370279577037082e-17,
+        -0.15178389847278595,
         1.0
       ],
       "name": "Sketchfab_model"
@@ -312,70 +198,11 @@
       "children": [
         2
       ],
-      "name": "root"
-    },
-    {
-      "children": [
-        3,
-        5
-      ],
-      "matrix": [
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        2.220446049250313e-16,
-        1.0,
-        0.0,
-        0.0,
-        -1.0,
-        2.220446049250313e-16,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "name": "GLTF_SceneRootNode"
-    },
-    {
-      "children": [
-        4
-      ],
-      "name": "igloo_0"
+      "name": "7d34724ca43b4d9f9003387cb6561072.obj.cleaner.materialmerger.gles"
     },
     {
       "mesh": 0,
-      "name": "Object_4"
-    },
-    {
-      "children": [
-        6
-      ],
-      "matrix": [
-        1.7080599069595337,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.7080599069595337,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.7080599069595337,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "name": "ground_1"
-    },
-    {
-      "mesh": 1,
-      "name": "Object_6"
+      "name": "Object_2"
     }
   ],
   "samplers": [
@@ -407,10 +234,6 @@
     {
       "sampler": 0,
       "source": 2
-    },
-    {
-      "sampler": 0,
-      "source": 3
     }
   ]
 }
