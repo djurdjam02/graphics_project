@@ -25,10 +25,12 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
-unsigned int loadTexture(const char *path);
+unsigned int loadTexture(const char *path, bool gammaCorrection);
 unsigned int loadCubemap(vector<std::string> faces);
 void setSpotLight(Shader& shader);
 void renderSnowGround();
+void renderQuad();
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -48,6 +50,9 @@ bool blinn = false;
 bool blinnKeyPressed = false;
 bool spotlight = false;
 bool spotlightKeyPressed = false;
+float exposure = 0.8;
+bool bloom = false;
+bool bloomKeyPressed = false;
 
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0.1);
@@ -175,7 +180,7 @@ int main() {
             glm::vec3(0.0f, 0.1f, -1.0f),
     };
     // vectors for which we will translate the position of our penguins
-    glm::vec3 pinguinPositions[] = {
+    glm::vec3 penguinPositions[] = {
             glm::vec3(-10.0f, 0.3f, 7.5f),
             glm::vec3(-12.0f, 0.3f, 3.0f),
             glm::vec3(14.0f, 0.3f, -6.2f),
@@ -202,12 +207,12 @@ int main() {
     };
 
     glm::vec3 stonePositions[] = {
-            glm::vec3(-12.0f, 0.2f, 5.5f),
-            glm::vec3(-3.0f, 0.2f, -6.5f),
-            glm::vec3(7.0f, 0.2f, 2.0f),
-            glm::vec3(4.5f, 0.2f, 12.5f),
-            glm::vec3(1.0f, 0.2f, -2.6f),
-            glm::vec3(-7.0f, 0.2f, 8.5f),
+            glm::vec3(-12.0f, 0.15f, 5.5f),
+            glm::vec3(-3.0f, 0.15f, -6.5f),
+            glm::vec3(7.0f, 0.15f, 2.0f),
+            glm::vec3(4.5f, 0.15f, 12.5f),
+            glm::vec3(1.0f, 0.15f, -2.6f),
+            glm::vec3(-7.0f, 0.15f, 8.5f),
     };
 
     // build and compile shaders
@@ -217,10 +222,12 @@ int main() {
     Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
     Shader skyBoxShader("resources/shaders/sky_box.vs", "resources/shaders/sky_box.fs");
     Shader snowShader("resources/shaders/snow.vs", "resources/shaders/snow.fs");
+    Shader blurShader("resources/shaders/blur.vs", "resources/shaders/blur.fs");
+    Shader finalScreenShader("resources/shaders/final_screen.vs", "resources/shaders/final_screen.fs");
     // load models
     // -----------
-    Model pinguinModel("resources/objects/pingvin/pingvin.obj");
-    pinguinModel.SetShaderTextureNamePrefix("material.");
+    Model penguinModel("resources/objects/pingvin/pingvin.obj");
+    penguinModel.SetShaderTextureNamePrefix("material.");
     Model iglooModel("resources/objects/igloo/scene.gltf");
     iglooModel.SetShaderTextureNamePrefix("material.");
 
@@ -361,12 +368,12 @@ int main() {
     glBindVertexArray(0);
 
     stbi_set_flip_vertically_on_load(false);
-    unsigned int transparentTexture = loadTexture("resources/textures/Icicles.png");
+    unsigned int transparentTexture = loadTexture("resources/textures/Icicles.png", false);
 
     stbi_set_flip_vertically_on_load(true);
-    unsigned int diffuseMap = loadTexture("resources/textures/snow01_diffuse_4k.jpg");
-    unsigned int normalMap  = loadTexture("resources/textures/snow01_normal_4k.jpg");
-    unsigned int heightMap  = loadTexture("resources/textures/snow01_height_4k.jpg");
+    unsigned int diffuseMap = loadTexture("resources/textures/snow01_diffuse_4k.jpg", true);
+    unsigned int normalMap  = loadTexture("resources/textures/snow01_normal_4k.jpg", false);
+    unsigned int heightMap  = loadTexture("resources/textures/snow01_height_4k.jpg", false);
 
     stbi_set_flip_vertically_on_load(false);
 
@@ -389,6 +396,64 @@ int main() {
     snowShader.setInt("normalMap", 1);
     snowShader.setInt("depthMap", 2);
 
+    // enabling hdr and bloom--> first we'll need floating point framebuffer
+    unsigned int hdrFBO;
+    glGenFramebuffers(1, &hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+    // create 2 floating point color buffers (1 for normal rendering, other for brightness threshold values)
+    unsigned int colorBuffers[2];
+    glGenTextures(2, colorBuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // attach texture to framebuffer
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
+    }
+    // for depth buffer we'll use renderbuffer instead of texture
+    unsigned int rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+    // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
+    unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, attachments);
+    // finally check if framebuffer is complete
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // ping-pong-framebuffer for blurring
+    unsigned int pingpongFBO[2];
+    unsigned int pingpongColorbuffers[2];
+    glGenFramebuffers(2, pingpongFBO);
+    glGenTextures(2, pingpongColorbuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+        // also check if framebuffers are complete (no need for depth buffer)
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cout << "Framebuffer not complete!" << std::endl;
+    }
+
+    blurShader.use();
+    blurShader.setInt("image", 0);
+    finalScreenShader.use();
+    finalScreenShader.setInt("hdrColorBuffer", 0);
+    finalScreenShader.setInt("blurColorBuffer", 1);
+
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
@@ -399,6 +464,15 @@ int main() {
         // input
         // -----
         processInput(window);
+        // render
+        // ------
+        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // if we want to render scene into floating point framebuffer we will need to bind our framebuffer before rendering
+        // -----------------------------------------------
+        glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         std::map<float, glm::vec3> sorted;
         for (unsigned int i = 0; i < locationOfIcicles.size(); i++)
@@ -406,11 +480,6 @@ int main() {
             float distance = glm::length(programState->camera.Position - locationOfIcicles[i]);
             sorted[distance] = locationOfIcicles[i];
         }
-        // render
-        // ------
-        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // don't forget to enable shader before setting uniforms
         modelShader.use();
         // view/projection transformations
@@ -425,7 +494,7 @@ int main() {
 
         modelShader.setVec3("dirLight.direction", -4.0f, -0.5f, -1.5f);
         modelShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
-        modelShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+        modelShader.setVec3("dirLight.diffuse", 0.01f, 0.01f, 0.01f);
         modelShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
         modelShader.setBool("blinn_phong", blinn);
         if(blinn)
@@ -441,7 +510,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 3.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 0.9f, 0.9f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 20.0f, 20.0f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
@@ -459,7 +528,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 0.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.9f, 0.9f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 20.0f, 20.0f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
             modelShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
@@ -479,11 +548,11 @@ int main() {
         for(int i = 0; i < 15; i++) {
             sign *= -1;
             model = glm::mat4(1.0f);
-            model = glm::translate(model, pinguinPositions[i]);
+            model = glm::translate(model, penguinPositions[i]);
             model = glm::rotate(model, (float)glm::radians(25.0f + sign * 2 * i), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(0.4f));
             modelShader.setMat4("model", model);
-            pinguinModel.Draw(modelShader);
+            penguinModel.Draw(modelShader);
         }
         // drawing 6 stones
         for(int i = 0; i < 6; i++) {
@@ -569,7 +638,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 4.0f));
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
-            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 0.2f, 0.2f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 1.0f, 1.0f, 0.0f);
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
             snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
             snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
@@ -579,7 +648,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 1.0f));
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
-            snowShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.2f, 0.2f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 1.0f, 1.0f, 0.0f);
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
             snowShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
             snowShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
@@ -591,7 +660,7 @@ int main() {
 
         snowShader.setVec3("dirLight.direction", -4.0f, -0.5f, -1.5f);
         snowShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
-        snowShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+        snowShader.setVec3("dirLight.diffuse", 0.01f, 0.01f, 0.01f);
         snowShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
         snowShader.setBool("blinn_phong", blinn);
 
@@ -618,8 +687,40 @@ int main() {
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glDepthFunc(GL_LESS);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // blur bright fragments with two-pass Gaussian Blur
+
+        bool horizontal = true, first_iteration = true;
+        unsigned int amount = 10;
+        blurShader.use();
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+            blurShader.setInt("horizontal", horizontal);
+            glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);
+            renderQuad();
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // now render floating point color buffer to 2D quad and transform HDR colors using tone mapping algorithm to default framebuffer's (clamped) color range
+        // --------------------------------------------------------------------------------------------------------------------------
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        finalScreenShader.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+        finalScreenShader.setInt("bloom", bloom);
+        finalScreenShader.setFloat("exposure", exposure);
+        renderQuad();
+
+        std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
+
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
 
@@ -671,6 +772,16 @@ void processInput(GLFWwindow *window) {
     {
         spotlightKeyPressed = false;
     }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !bloomKeyPressed)
+    {
+        bloom = !bloom;
+        bloomKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
+    {
+        bloomKeyPressed = false;
+    }
+
 
 }
 
@@ -750,7 +861,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
 }
-unsigned int loadTexture(char const * path)
+unsigned int loadTexture(char const * path, bool gammaCorrection)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -759,16 +870,25 @@ unsigned int loadTexture(char const * path)
     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data)
     {
-        GLenum format;
+        GLenum internalFormat;
+        GLenum dataFormat;
         if (nrComponents == 1)
-            format = GL_RED;
+        {
+            internalFormat = dataFormat = GL_RED;
+        }
         else if (nrComponents == 3)
-            format = GL_RGB;
+        {
+            internalFormat = gammaCorrection ? GL_SRGB : GL_RGB;
+            dataFormat = GL_RGB;
+        }
         else if (nrComponents == 4)
-            format = GL_RGBA;
+        {
+            internalFormat = gammaCorrection ? GL_SRGB_ALPHA : GL_RGBA;
+            dataFormat = GL_RGBA;
+        }
 
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -820,7 +940,7 @@ void setSpotLight(Shader& shader) {
     shader.setVec3("spotLight.position", programState->camera.Position);
     shader.setVec3("spotLight.direction", programState->camera.Front);
     shader.setVec3("spotLight.ambient", 0.1f, 0.1f, 0.1f);
-    shader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+    shader.setVec3("spotLight.diffuse", 0.8f, 0.8f, 0.8f);
     shader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
     shader.setFloat("spotLight.constant", 1.0f);
     shader.setFloat("spotLight.linear", 0.22f);
@@ -919,5 +1039,33 @@ void renderSnowGround(){
     }
     glBindVertexArray(snowVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+                // positions        // texture Coords
+                -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+                1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);
 }

@@ -1,5 +1,6 @@
 #version 330 core
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 struct Material {
     sampler2D texture_diffuse1;
@@ -64,6 +65,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 void main()
 {
+    const float gamma = 2.2;
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 result = CalcDirLight(dirLight, norm, viewDir);
@@ -76,7 +78,13 @@ void main()
             result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
         }
     }
-
+    float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 1.0)
+        BrightColor = vec4(result, 1.0);
+    else
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+    //used gamma correction only for ground and objects and not for the whole scene because it looks more realistic that way
+    result = pow(result, vec3(1.0 / gamma));
     FragColor = vec4(result, 1.0);
 }
 
@@ -95,7 +103,9 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     }
 
     float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    float correctedDistance = distance * distance;
+    float attenuation = 1.0 / (light.constant + light.linear * correctedDistance + light.quadratic * correctedDistance * correctedDistance);
+    // attenuation = 1.0 / correctedDistance ?
 
     vec3 ambient = light.ambient * texture(material.texture_diffuse1, TexCoords).rgb;
     vec3 diffuse = light.diffuse * diff * texture(material.texture_diffuse1, TexCoords).rgb;
@@ -143,7 +153,8 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 
     // attenuation
     float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    float correctedDistance = distance * distance;
+    float attenuation = 1.0 / (light.constant + light.linear * correctedDistance + light.quadratic * correctedDistance * correctedDistance);
     // spotlight intensity
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cutOff - light.outerCutOff;
