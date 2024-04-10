@@ -153,7 +153,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     float distance = length(light.position - fragPos);
     float correctedDistance = distance * distance;
     float attenuation = 1.0 / (light.constant + light.linear * correctedDistance + light.quadratic * correctedDistance * correctedDistance);
-    // attenuation = 1.0 / correctedDistance ?
+
 
     vec3 ambient = light.ambient * texture(diffuseMap, texCoords).rgb;
     vec3 diffuse = light.diffuse * diff * texture(diffuseMap, texCoords).rgb;
@@ -205,7 +205,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
     float distance = length(light.position - fragPos);
     float correctedDistance = distance * distance;
     float attenuation = 1.0 / (light.constant + light.linear * correctedDistance + light.quadratic * correctedDistance * correctedDistance);
-    // attenuation = 1.0 / correctedDistance ?
+
     // spotlight intensity
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cutOff - light.outerCutOff;

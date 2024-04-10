@@ -25,6 +25,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
 unsigned int loadTexture(const char *path, bool gammaCorrection);
 unsigned int loadCubemap(vector<std::string> faces);
 void setSpotLight(Shader& shader);
@@ -53,6 +54,8 @@ bool spotlightKeyPressed = false;
 float exposure = 0.8;
 bool bloom = false;
 bool bloomKeyPressed = false;
+bool waddle = false;
+bool waddleKeyPressed = false;
 
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0.1);
@@ -71,15 +74,7 @@ void ProgramState::SaveToFile(std::string filename) {
     std::ofstream out(filename);
     out << clearColor.r << '\n'
         << clearColor.g << '\n'
-        << clearColor.b << '\n'
-        << ImGuiEnabled << '\n';
-        /*<< camera.Position.x << '\n'
-        << camera.Position.y << '\n'
-        << camera.Position.z << '\n'
-        << camera.Front.x << '\n'
-        << camera.Front.y << '\n'
-        << camera.Front.z
-        << '\n'; */
+        << clearColor.b << '\n';
 }
 
 void ProgramState::LoadFromFile(std::string filename) {
@@ -87,16 +82,7 @@ void ProgramState::LoadFromFile(std::string filename) {
     if (in) {
         in >> clearColor.r
            >> clearColor.g
-           >> clearColor.b
-           >> ImGuiEnabled;
-           /*
-           >> camera.Position.x
-           >> camera.Position.y
-           >> camera.Position.z
-           >> camera.Front.x
-           >> camera.Front.y
-           >> camera.Front.z;
-            */
+           >> clearColor.b;
     }
 }
 
@@ -149,14 +135,12 @@ int main() {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); // da mogu da isprobam lepo
     // Init Imgui
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
-
-
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
@@ -171,7 +155,7 @@ int main() {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    // translation vectors for each of igloo house
+    // translation vectors for each of the igloo houses
     glm::vec3 iglooPositions[] = {
             glm::vec3(-3.0f, 0.1f, 5.5f),
             glm::vec3(-8.0f, 0.1f, 1.8f),
@@ -207,12 +191,12 @@ int main() {
     };
 
     glm::vec3 stonePositions[] = {
-            glm::vec3(-12.0f, 0.15f, 5.5f),
-            glm::vec3(-3.0f, 0.15f, -6.5f),
-            glm::vec3(7.0f, 0.15f, 2.0f),
-            glm::vec3(4.5f, 0.15f, 12.5f),
-            glm::vec3(1.0f, 0.15f, -2.6f),
-            glm::vec3(-7.0f, 0.15f, 8.5f),
+            glm::vec3(-12.0f, 0.15f, 6.5f),
+            glm::vec3(-3.0f, 0.15f, -7.5f),
+            glm::vec3(7.0f, 0.15f, 3.0f),
+            glm::vec3(4.5f, 0.15f, 13.5f),
+            glm::vec3(1.0f, 0.15f, -3.6f),
+            glm::vec3(-7.0f, 0.15f, 9.5f),
     };
 
     // build and compile shaders
@@ -235,41 +219,26 @@ int main() {
     iceBlockModel.SetShaderTextureNamePrefix("material.");
     Model stoneModel("resources/objects/stone/scene.gltf");
     stoneModel.SetShaderTextureNamePrefix("material.");
-
+    // vertices for octahedron that have only one attribute (position attribute) and since many of the vertices are repeated I used EBO.
     float vertices[] = {
-        0.0f, 0.5f, 0.0f,
-        -0.5f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.5f,
-
-        0.0f, 0.5f, 0.0f,
-        0.0f, 0.0f, 0.5f,
-        0.5f, 0.0f, 0.0f,
-
-        0.0f, 0.5f, 0.0f,
-        0.5f, 0.0f, 0.0f,
-        0.0f, 0.0f, -0.5f,
-
-        0.0f, 0.5f, 0.0f,
-        0.0f, 0.0f, -0.5f,
-        -0.5f, 0.0f, 0.0f,
-
-        0.0f, -0.5f, 0.0f,
-        -0.5f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.5f,
-
-        0.0f, -0.5f, 0.0f,
-        0.0f, 0.0f, 0.5f,
-        0.5f, 0.0f, 0.0f,
-
-        0.0f, -0.5f, 0.0f,
-        0.5f, 0.0f, 0.0f,
-        0.0f, 0.0f, -0.5f,
-
-        0.0f, -0.5f, 0.0f,
-        0.0f, 0.0f, -0.5f,
-        -0.5f, 0.0f, 0.0f
-
+            0.0f, 0.5f, 0.0f, // 0
+            -0.5f, 0.0f, 0.0f, // 1
+            0.0f, 0.0f, 0.5f, // 2
+            0.5f, 0.0f, 0.0f,  // 3
+            0.0f, 0.0f, -0.5f, // 4
+            0.0f, -0.5f, 0.0f, // 5
     };
+    unsigned int indices[] {
+        0, 1, 2, // first triangle
+        0, 2, 3, // second triangle
+        0, 3, 4, // 3rd triangle
+        0, 4, 1, // 4th triangle
+        5, 1, 2, // 5th triangle
+        5, 2, 3, // 6th triangle
+        5, 3, 4, // 7th triangle
+        5, 4, 1 // 8th triangle
+    };
+
     float skyboxVertices[] = {
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -331,16 +300,21 @@ int main() {
         glm::vec3(2.62f, 0.28f, -2.498f),
         glm::vec3(-2.38f, 0.28f, 1.008f),
     };
-    unsigned int VBO, VAO;
+    unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
     glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glGenBuffers(1, &EBO);
 
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 
     unsigned int transparentVAO, transparentVBO;
     glGenVertexArrays(1, &transparentVAO);
@@ -461,11 +435,8 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // input
-        // -----
         processInput(window);
         // render
-        // ------
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -480,7 +451,7 @@ int main() {
             float distance = glm::length(programState->camera.Position - locationOfIcicles[i]);
             sorted[distance] = locationOfIcicles[i];
         }
-        // don't forget to enable shader before setting uniforms
+
         modelShader.use();
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
@@ -496,6 +467,7 @@ int main() {
         modelShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
         modelShader.setVec3("dirLight.diffuse", 0.01f, 0.01f, 0.01f);
         modelShader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+
         modelShader.setBool("blinn_phong", blinn);
         if(blinn)
             std::cout << " The scene is currently lit by Blinn-Phong's lighting model" << std::endl;
@@ -503,14 +475,13 @@ int main() {
             std::cout << " The scene is currently lit by Phong's lighting model" << std::endl;
 
         setSpotLight(modelShader);
-
         glm::mat4 model;
         unsigned int sign = -1;
         // drawing 5 igloo houses
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 3.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 20.0f, 20.0f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 18.0f, 18.0f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
             modelShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
@@ -528,7 +499,7 @@ int main() {
         for(int i = 0; i < 5; i++) {
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 0.0f));
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
-            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 20.0f, 20.0f, 0.0f);
+            modelShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 18.0f, 18.0f, 0.0f);
             modelShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
             modelShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
             modelShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
@@ -549,6 +520,8 @@ int main() {
             sign *= -1;
             model = glm::mat4(1.0f);
             model = glm::translate(model, penguinPositions[i]);
+            if(waddle)
+                model = glm::rotate(model, (float)(1.5*sin(glfwGetTime())), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::rotate(model, (float)glm::radians(25.0f + sign * 2 * i), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::scale(model, glm::vec3(0.4f));
             modelShader.setMat4("model", model);
@@ -598,11 +571,11 @@ int main() {
 
             octahedronShader.setVec3("myColor", colorByTime);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            glDrawArrays(GL_TRIANGLES, 0, 24);
+            glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
 
             octahedronShader.setVec3("myColor", glm::vec3(0.0f, 0.0f, 0.0f));
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glDrawArrays(GL_TRIANGLES, 0, 24);
+            glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
 
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
@@ -638,23 +611,21 @@ int main() {
         for(int i = 0; i < 5; i++) {
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].position", iglooPositions[i] + glm::vec3(10.0f, 0.2f, 4.0f));
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].ambient", 0.05f, 0.05f, 0.05f);
-            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 1.0f, 1.0f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].diffuse", 0.8f, 0.8f, 0.0f);
             snowShader.setVec3("pointLights[" + std::to_string(i+5) + "].specular", 0.8f, 0.8f, 0.8f);
             snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].constant", 1.0f);
             snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].linear", 0.22f);
             snowShader.setFloat("pointLights[" + std::to_string(i+5) + "].quadratic", 0.20f);
         }
-
         for(int i = 0; i < 5; i++) {
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].position", iglooPositions[i] + glm::vec3(0.0f, 0.2f, 1.0f));
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.05f, 0.05f, 0.05f);
-            snowShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 1.0f, 1.0f, 0.0f);
+            snowShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.8f, 0.8f, 0.0f);
             snowShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
             snowShader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
             snowShader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.22f);
             snowShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.20f);
         }
-
 
         snowShader.setVec3("viewPos", programState->camera.Position);
 
@@ -697,7 +668,8 @@ int main() {
         for (unsigned int i = 0; i < amount; i++)
         {
             glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
-            blurShader.setInt("horizontal", horizontal);
+            blurShader.setBool("horizontal", horizontal);
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);
             renderQuad();
             horizontal = !horizontal;
@@ -713,14 +685,13 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
-        finalScreenShader.setInt("bloom", bloom);
+        finalScreenShader.setBool("bloom", bloom);
         finalScreenShader.setFloat("exposure", exposure);
         renderQuad();
 
-        std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
+        std::cout << "bloom: " << (bloom ? "on" : "off") << std::endl;
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
-
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
 
@@ -735,6 +706,15 @@ int main() {
     ImGui::DestroyContext();
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteVertexArrays(1, &transparentVAO);
+    glDeleteBuffers(1, &transparentVBO);
+    glDeleteVertexArrays(1, &skyBoxVAO);
+    glDeleteBuffers(1, &skyBoxVBO);
+
     glfwTerminate();
     return 0;
 }
@@ -781,7 +761,15 @@ void processInput(GLFWwindow *window) {
     {
         bloomKeyPressed = false;
     }
-
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !waddleKeyPressed)
+    {
+        waddle = !waddle;
+        waddleKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE)
+    {
+        waddleKeyPressed = false;
+    }
 
 }
 
@@ -827,9 +815,11 @@ void DrawImGui(ProgramState *programState) {
     {
         static float f = 0.0f;
         ImGui::Begin("Hello window");
-        ImGui::Text("Hello text");
+        ImGui::Text("Polar night");
         ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
-        ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
+        ImGui::Checkbox("Blinn-Phong lighting", &blinn);
+        ImGui::Checkbox("Spotlight", &spotlight);
+        ImGui::Checkbox("Penguins movement", &waddle);
 
         ImGui::End();
     }
@@ -1054,7 +1044,6 @@ void renderQuad()
                 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
                 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
         };
-        // setup plane VAO
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
         glBindVertexArray(quadVAO);

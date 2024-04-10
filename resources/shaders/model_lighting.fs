@@ -83,6 +83,7 @@ void main()
         BrightColor = vec4(result, 1.0);
     else
         BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+
     //used gamma correction only for ground and objects and not for the whole scene because it looks more realistic that way
     result = pow(result, vec3(1.0 / gamma));
     FragColor = vec4(result, 1.0);
@@ -105,7 +106,6 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float distance = length(light.position - fragPos);
     float correctedDistance = distance * distance;
     float attenuation = 1.0 / (light.constant + light.linear * correctedDistance + light.quadratic * correctedDistance * correctedDistance);
-    // attenuation = 1.0 / correctedDistance ?
 
     vec3 ambient = light.ambient * texture(material.texture_diffuse1, TexCoords).rgb;
     vec3 diffuse = light.diffuse * diff * texture(material.texture_diffuse1, TexCoords).rgb;
