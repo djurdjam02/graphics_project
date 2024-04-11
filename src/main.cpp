@@ -439,7 +439,7 @@ int main() {
         // render
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        glDisable(GL_CULL_FACE);
         // if we want to render scene into floating point framebuffer we will need to bind our framebuffer before rendering
         // -----------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
@@ -549,13 +549,11 @@ int main() {
             iceBlockModel.Draw(modelShader);
         };
 
-        glEnable(GL_CULL_FACE);
         octahedronShader.use();
         octahedronShader.setMat4("view", view);
         octahedronShader.setMat4("projection", projection);
         setSpotLight(octahedronShader);
         for(int i = 0; i < 5; i++) {
-
             model = glm::mat4(1.0f);
             model = glm::translate(model, iglooPositions[i] + glm::vec3(-1.0f, 0.08f, 1.8f));
             model = glm::rotate(model, (float) glm::radians(50.0), glm::vec3(0.7, 0.8, 0.2));
@@ -579,7 +577,6 @@ int main() {
 
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        glDisable(GL_CULL_FACE);
 
         blendingShader.use();
         blendingShader.setInt("texture1", 0);
