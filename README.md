@@ -8,6 +8,7 @@ POLAR NIGHT \
 - `B` - Blinn-Phong lighting model on/off
 - `K` - Spotlight on/off
 - `P` - Penguins movement on/off
+- `SPACE` - Bloom on/off
 # Advanced techniques used:
  - [x] Cubemaps
  - [x] Normal and Parallax mapping
