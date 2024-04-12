@@ -11,11 +11,11 @@ POLAR NIGHT \
 # Advanced techniques used:
  - [x] Cubemaps
  - [x] Normal and Parallax mapping
- - [x] HDR
+ - [x] HDR, Bloom
 # Course information:
 Professor: Vesna Marinković \
 Teaching Assistant: Marko Spasić
 # Gallery:
 ![photo 1](/resources/gallery/arctic1.png) 
 ![photo 2](/resources/gallery/arctic2.png)
-
+![photo 3](https://github.com/djurdjam02/graphics_project/assets/149554252/e854341f-26f5-42cf-be61-b61770f7bd84)
